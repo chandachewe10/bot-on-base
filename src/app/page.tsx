@@ -9,6 +9,8 @@ import {
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   ConnectWallet,
   Wallet as OnchainWallet,
@@ -59,7 +61,7 @@ export default function ChatPage() {
       {
         id: "1",
         role: "bot",
-        content: "Welcome back! I'm your AgentKit assistant. Connect your Base wallet to verify your on-chain identity before we start tweeting!",
+        content: "Welcome back! I'm your Bot assistant. Connect your Base wallet to verify your on-chain identity before we start tweeting!",
         timestamp: new Date(),
       }
     ]);
@@ -272,12 +274,14 @@ export default function ChatPage() {
                 msg.role === "user" ? "items-end" : "items-start"
               )}>
                 <div className={cn(
-                  "max-w-xl rounded-2xl p-5 text-sm md:text-base leading-relaxed tracking-tight shadow-xl",
+                  "rounded-2xl text-sm md:text-base leading-relaxed tracking-tight shadow-xl transition-all markdown-content",
                   msg.role === "user"
-                    ? "bg-indigo-600 text-white rounded-tr-none font-medium"
-                    : "bg-white/[0.03] text-slate-200 border border-white/5 rounded-tl-none backdrop-blur-md"
+                    ? "bg-indigo-600 text-white rounded-tr-none font-medium px-8 py-5 max-w-3xl"
+                    : "bg-white/[0.03] text-slate-200 border border-white/5 rounded-tl-none backdrop-blur-md p-5 max-w-xl"
                 )}>
-                  {msg.content}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
                 {msg.timestamp && (
                   <span className="mt-2 text-[10px] font-bold text-white/20 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
