@@ -3,19 +3,24 @@ import {
     twitterActionProvider,
     walletActionProvider,
     erc20ActionProvider,
-    pythActionProvider
+    pythActionProvider,
+    customActionProvider
 } from "@coinbase/agentkit";
 import { getLangChainTools } from "@coinbase/agentkit-langchain";
 import { MemorySaver } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatOpenAI } from "@langchain/openai";
+import { z } from "zod";
+import { createWalletClient, http, parseEther, createPublicClient } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
 
 const modifier = `
   You are a helpful agent that can interact with the Twitter (X) API and the Base blockchain using the Coinbase Developer Platform Agentkit.
   
   CAPABILITIES:
   1. Twitter (X): You can tweet, reply, upload media, and look up accounts.
-  2. Blockchain (Base): You can check ETH/Token balances, transfer funds, and read your own wallet address.
+  2. Blockchain (Base): You can check ETH/Token balances, transfer funds from your own wallet, AND request the user to transfer funds securely from their own connected browser wallet using the UI.
   3. Market Data (Pyth): You can fetch real-time prices for assets like ETH, BTC, etc.
   
   If a user provides a handle (e.g., @username), resolve it to a numeric user ID first.
@@ -25,7 +30,7 @@ const modifier = `
   2. When listing multiple tweets or assets, ALWAYS use a bulleted or numbered list.
   3. Format list items clearly with bold headers.
   4. Your replies are the primary UI; ensure they are clean and user-friendly.
-  5. Never output raw JSON unless specifically requested.
+  5. If you call \`request_user_wallet_transfer\`, you MUST include the exact JSON block returned by the tool in your final response to the user so that the UI can render the button. Do not summarize or omit the JSON block.
 `;
 
 // In-memory agent instance (per process)
@@ -41,6 +46,18 @@ export async function getAgent() {
         openAIApiKey: process.env.OPENAI_API_KEY
     });
 
+    const transferFromSourceAction = customActionProvider({
+        name: "request_user_wallet_transfer",
+        description: "Requests the user to transfer ETH from their connected browser wallet to a destination address. Use this when the user wants to send funds from their own wallet instead of the bot's wallet. IMPORTANT: Do NOT ask for the user's private key. The secure browser UI will handle the transaction signing.",
+        schema: z.object({
+            destinationAddress: z.string().describe("The recipient address for the ETH transfer"),
+            amount: z.string().describe("The amount in ETH to transfer (e.g., '0.01')."),
+        }),
+        invoke: async (walletProvider: any, args: any) => {
+            return `I have prepared the transaction! Please authorize it using your connected wallet:\n\n\`\`\`json\n{"ui_action": "wallet_transfer", "to": "${args.destinationAddress}", "amount": "${args.amount}"}\n\`\`\``;
+        }
+    });
+
     const agentkit = await AgentKit.from({
         cdpApiKeyId: process.env.CDP_API_KEY_ID,
         cdpApiKeySecret: process.env.CDP_API_KEY_SECRET,
@@ -49,7 +66,8 @@ export async function getAgent() {
             twitterActionProvider(),
             walletActionProvider(),
             erc20ActionProvider(),
-            pythActionProvider()
+            pythActionProvider(),
+            transferFromSourceAction
         ],
     });
 

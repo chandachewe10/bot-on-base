@@ -24,7 +24,50 @@ import {
   Name,
   Identity
 } from '@coinbase/onchainkit/identity';
-import { useAccount } from 'wagmi';
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'viem';
+
+const TransferButton = ({ to, amount }: { to: string; amount: string }) => {
+  const { data: hash, isPending, sendTransaction, error } = useSendTransaction();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  
+  return (
+    <div className="mt-4 p-5 border border-indigo-500/20 rounded-2xl bg-indigo-500/5 backdrop-blur-md">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400">
+          <Send className="h-5 w-5" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-white">Action Required</h4>
+          <p className="text-xs text-indigo-200/60">Send {amount} ETH to {to.slice(0, 6)}...{to.slice(-4)}</p>
+        </div>
+      </div>
+      
+      <button
+        onClick={() => {
+          if (!to || !amount) return;
+          try {
+            sendTransaction({ to: to as `0x${string}`, value: parseEther(amount) });
+          } catch (err) {
+            console.error(err);
+          }
+        }}
+        disabled={isPending || isConfirming || isSuccess}
+        className={cn(
+          "w-full py-2.5 px-4 rounded-xl text-sm font-bold transition-all shadow-lg",
+          isSuccess 
+            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" 
+            : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        )}
+      >
+        {isPending ? 'Check your wallet...' : isConfirming ? 'Awaiting confirmation...' : isSuccess ? 'Transaction Successful!' : 'Sign & Send'}
+      </button>
+      
+      {error && <div className="text-red-400 text-xs mt-3 font-medium bg-red-400/10 p-2 rounded-lg">{error.name || 'Error'}: {error.message.split('\n')[0]}</div>}
+      {hash && <div className="text-indigo-400 text-xs mt-3 bg-indigo-400/10 p-2 rounded-lg break-all">Tx Hash: {hash}</div>}
+    </div>
+  );
+};
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -279,7 +322,22 @@ export default function ChatPage() {
                     ? "bg-indigo-600 text-white rounded-tr-none font-medium px-8 py-5 max-w-3xl"
                     : "bg-white/[0.03] text-slate-200 border border-white/5 rounded-tl-none backdrop-blur-md p-5 max-w-xl"
                 )}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({node, inline, className, children, ...props}: any) {
+                        if (!inline && className === 'language-json') {
+                          try {
+                            const data = JSON.parse(String(children));
+                            if (data.ui_action === 'wallet_transfer') {
+                              return <TransferButton to={data.to} amount={data.amount} />;
+                            }
+                          } catch(e) {}
+                        }
+                        return <code className={className} {...props}>{children}</code>;
+                      }
+                    }}
+                  >
                     {msg.content}
                   </ReactMarkdown>
                 </div>
