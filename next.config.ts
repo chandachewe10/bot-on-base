@@ -13,6 +13,18 @@ const nextConfig: NextConfig = {
       'jose',
     ],
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : []),
+        '@coinbase/cdp-sdk',
+        '@coinbase/agentkit',
+        '@coinbase/agentkit-langchain',
+        'jose',
+      ];
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
