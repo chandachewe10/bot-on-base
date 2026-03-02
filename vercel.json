@@ -1,4 +1,4 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "next build --no-turbopack"
+  "buildCommand": "TURBOPACK=0 next build"
 }
