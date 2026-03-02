@@ -1,19 +1,7 @@
-import {
-    AgentKit,
-    twitterActionProvider,
-    walletActionProvider,
-    erc20ActionProvider,
-    pythActionProvider,
-    customActionProvider
-} from "@coinbase/agentkit";
-import { getLangChainTools } from "@coinbase/agentkit-langchain";
 import { MemorySaver } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
-import { createWalletClient, http, parseEther, createPublicClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
 
 const modifier = `
   You are a helpful agent that can interact with the Twitter (X) API and the Base blockchain using the Coinbase Developer Platform Agentkit.
@@ -33,14 +21,16 @@ const modifier = `
   5. If you call \`request_user_wallet_transfer\`, you MUST include the exact JSON block returned by the tool in your final response to the user so that the UI can render the button. Do not summarize or omit the JSON block.
 `;
 
-// In-memory agent instance (per process)
 let agentInstance: any = null;
 const memory = new MemorySaver();
 
 export async function getAgent() {
     if (agentInstance) return agentInstance;
 
-    // Initialize LLM
+    // Dynamic imports to avoid ESM/CJS conflicts
+    const { AgentKit, twitterActionProvider, walletActionProvider, erc20ActionProvider, pythActionProvider, customActionProvider } = await import("@coinbase/agentkit");
+    const { getLangChainTools } = await import("@coinbase/agentkit-langchain");
+
     const llm = new ChatOpenAI({
         model: "gpt-4o-mini",
         openAIApiKey: process.env.OPENAI_API_KEY
