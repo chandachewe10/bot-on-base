@@ -1,5 +1,7 @@
 {
-  "installCommand": "npm install --legacy-peer-deps @react-native-async-storage/async-storage",
-
-  "buildCommand": "next build --webpack"
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "next build",
+  "env": {
+    "NODE_OPTIONS": "--experimental-require-module"
+  }
 }
